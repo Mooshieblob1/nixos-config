@@ -1,0 +1,7 @@
+# Nix build outputs (nixos-rebuild build / nix build)
+result
+result-*
+
+# Timestamped configuration.nix backups created during manual edits
+configuration.nix.bak
+configuration.nix.bak-*
