@@ -28,4 +28,20 @@
     enable = true;
     nix-direnv.enable = true;
   };
+
+  # Git, managed declaratively. The GitHub credential helper delegates to gh
+  # (token in its keyring). Referencing gh by name rather than a /nix/store
+  # path means it survives garbage collection and gh upgrades — a hardcoded
+  # store path in the old imperative ~/.gitconfig broke after a `nix-collect-
+  # garbage -d`. HM writes ~/.config/git/config, so the legacy ~/.gitconfig
+  # must be removed or it shadows this.
+  programs.git = {
+    enable = true;
+    userName = "Mooshieblob1";
+    userEmail = "kentvuong88@gmail.com";
+    extraConfig = {
+      credential."https://github.com".helper = "!gh auth git-credential";
+      credential."https://gist.github.com".helper = "!gh auth git-credential";
+    };
+  };
 }
