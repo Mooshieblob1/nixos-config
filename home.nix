@@ -18,4 +18,14 @@
 
   # Let home-manager manage itself.
   programs.home-manager.enable = true;
+
+  # direnv + nix-direnv: auto-load per-project flake dev shells on cd. Lets the
+  # MooshieUI Tauri toolchain (webkitgtk, rust, pnpm, openssl) load without a
+  # manual `nix develop`, so VSCode's terminal and rust-analyzer pick it up.
+  # Fish shell hook is added separately in ~/.config/fish/conf.d/direnv.fish
+  # because fish isn't managed by home-manager here.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
 }

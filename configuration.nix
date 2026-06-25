@@ -24,6 +24,10 @@
   boot.lanzaboote = {
     enable = true;
     pkiBundle = "/var/lib/sbctl";
+    # Keep only the last N generations' signed boot entries so the shared
+    # 1 GiB ESP (which also holds Windows and another Linux's kernels) doesn't
+    # fill up with stale NixOS UKIs/initrds over time.
+    configurationLimit = 10;
   };
 
   # Swap on the existing nvme0n1p6 partition (32 GiB, label "swap"), on the
@@ -156,8 +160,10 @@
   # binaries fail with "cannot run dynamically linked executable".
   programs.nix-ld.enable = true;
 
-  # Steam (enables steam, steam-run, and required udev/firewall bits).
-  programs.steam.enable = true;
+  # Steam: disabled — not gaming on this host. The game libraries live on the
+  # shared /mnt/*/SteamLibrary drives used by the other OS; re-enable here if
+  # you ever want to play on NixOS.
+  programs.steam.enable = false;
 
   # Hyprland (Wayland tiling compositor) — appears as a session at GDM
   # alongside GNOME so we can fall back if anything goes wrong.
@@ -186,12 +192,19 @@
   users.users."blob" = {
     isNormalUser = true;
     description = "blob";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "hidraw" ];
     shell = pkgs.fish;
     packages = with pkgs; [
     #  thunderbird
     ];
   };
+
+  # WebHID device access (Chrome -> /dev/hidraw*). Replaces the imperative
+  # groupadd/usermod/udev-rule steps so it survives rebuilds.
+  users.groups.hidraw = {};
+  services.udev.extraRules = ''
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", GROUP="hidraw", MODE="0660"
+  '';
 
   # Install firefox.
   programs.firefox.enable = true;
@@ -210,6 +223,17 @@
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
+  # Automatic store maintenance so / doesn't slowly balloon again. A weekly
+  # timer garbage-collects generations older than 30 days (keeps ~a month of
+  # rollback), and auto-optimise-store hard-links identical files in the store
+  # to remove duplication as paths are written.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+  nix.settings.auto-optimise-store = true;
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
@@ -218,6 +242,13 @@
   environment.systemPackages = with pkgs; [
     claude-code
     vesktop
+    google-chrome
+
+    # Modded Minecraft launcher. Using prismlauncher rather than atlauncher:
+    # the nixpkgs atlauncher builds from source, so its JAR's SHA1 differs from
+    # the official release, and Cloudflare blocks that User-Agent with HTTP 403
+    # (breaks loader-version fetches). See NixOS/nixpkgs#396123.
+    prismlauncher
 
     # Secure Boot key management (create/enroll/verify keys for lanzaboote).
     sbctl
@@ -234,6 +265,7 @@
     ghostty
     waybar
     wofi
+    eww   # widget daemon; powers the HDR control dropdown opened from waybar
     mako
     awww
     hyprlock
@@ -259,6 +291,7 @@
     neovim
     stow
     git
+    gh
 
     # Fonts.
     nerd-fonts.jetbrains-mono
