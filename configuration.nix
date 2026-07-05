@@ -73,6 +73,22 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
+  # Mullvad VPN — CLI-only daemon (pkgs.mullvad, no Electron GUI). This runs the
+  # `mullvad-daemon` systemd service that the `mullvad` CLI talks to; the custom
+  # waybar module (custom/mullvad) + ~/.local/bin/mullvad-ctl + the eww dropdown
+  # are the UI. Log in once with `mullvad account login <number>` — the daemon
+  # persists the account and relay/settings across reboots.
+  services.mullvad-vpn = {
+    enable = true;
+    package = pkgs.mullvad;
+  };
+  # Keep NetworkManager from fighting the daemon over the tunnel interfaces
+  # (it would otherwise try to manage wg-mullvad / tun-mullvad and break DNS).
+  networking.networkmanager.unmanaged = [
+    "interface-name:wg-mullvad"
+    "interface-name:tun-mullvad"
+  ];
+
   # Set your time zone.
   time.timeZone = "Australia/Perth";
 
@@ -209,6 +225,9 @@
   # Install firefox.
   programs.firefox.enable = true;
 
+  # Install KDE Connect
+  programs.kdeconnect.enable = true;
+
   # Make firefox the default browser.
   xdg.mime.defaultApplications = {
     "text/html" = "firefox.desktop";
@@ -266,7 +285,7 @@
     waybar
     wofi
     eww   # widget daemon; powers the HDR control dropdown opened from waybar
-    mako
+    swaynotificationcenter   # swaync: toasts + notification center (waybar bell)
     awww
     hyprlock
     hypridle
@@ -280,6 +299,7 @@
     playerctl
     polkit_gnome
     btop
+    libnotify   # notify-send; swaync has no sender of its own (mullvad-ctl toasts)
 
     # Rice stack (szymonwilczek/dotfiles).
     wallust
@@ -292,6 +312,11 @@
     stow
     git
     gh
+
+    # Python project runner. Used by Claude Code plugins (jobfinder) whose
+    # scripts run via `uv run`; uv fetches its own Python, which loads through
+    # nix-ld's glibc loader (programs.nix-ld above).
+    uv
 
     # Fonts.
     nerd-fonts.jetbrains-mono
