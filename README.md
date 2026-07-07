@@ -4,6 +4,8 @@ Flake-based NixOS configuration for a single machine: hostname `nixos`, primary 
 
 This repo lives at `/etc/nixos/` on the running system and is version-controlled with git (remote: `github.com/Mooshieblob1/nixos-config`). Editing a file here and rebuilding is how the OS is changed; nothing is configured imperatively.
 
+It is a personal config, not a distro or template, but it is readable and can be adapted. If you want to build from it, read [Using this on a different machine](#using-this-on-a-different-machine) first: several values are hardcoded to specific hardware, a username, and a hostname.
+
 ## Quick start
 
 Everything flows through `nixos-rebuild`. Edit a file, then:
@@ -74,5 +76,30 @@ nix search nixpkgs <name>
 - **Audio:** PipeWire (ALSA + Pulse compat). PulseAudio is explicitly disabled.
 - **Shared multi-boot storage:** the ESP and several `/mnt/*` drives are shared with Windows and another Linux install. The extra drives mount lazily via systemd automount with `nofail`, so a missing disk never blocks boot.
 - `system.stateVersion = "26.05"` pins stateful defaults to the original install. Leave it alone.
+
+## Using this on a different machine
+
+This config is written for one machine and one user, so it will not build as-is on yours. Expect to change at least:
+
+- **Hardware.** Delete `hardware-configuration.nix` and regenerate it with `sudo nixos-generate-config`. The filesystem and swap UUIDs in `configuration.nix` (the `fileSystems."/mnt/*"` and `swapDevices` blocks) point at specific disks and will not match yours. Edit or remove them.
+- **User.** The user is `blob`. Rename it in `configuration.nix` (`users.users."blob"`), `flake.nix` (`home-manager.users.blob`), and `home.nix` (`home.username`, `home.homeDirectory`). Set your own `userName` and `userEmail` in `home.nix`'s `programs.git`.
+- **Hostname.** It is `nixos`. Change `networking.hostName` in `configuration.nix` and the `nixosConfigurations.nixos` output name in `flake.nix`. Keep the two matching so `nixos-rebuild` auto-detection keeps working.
+- **GPU.** The NVIDIA block targets an RTX 5070 (Blackwell) using the open kernel modules. For other hardware, adjust or remove `services.xserver.videoDrivers` and `hardware.nvidia`.
+- **Secure Boot.** lanzaboote needs its own signing keys generated with `sbctl` (see the comments in `configuration.nix`). If you do not want Secure Boot, drop the `lanzaboote` input from `flake.nix` and re-enable `boot.loader.systemd-boot`.
+- **Locale, timezone, keymap.** Set for Australia (`Australia/Perth`, `en_GB` / `en_AU`, `au` keymap). Change to your region.
+
+If your hostname is not `nixos`, build with an explicit flake reference:
+
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#<your-hostname>
+```
+
+## Hyprland rice and dotfiles
+
+This config installs the Hyprland toolkit (waybar, wofi, eww, hyprlock, hypridle, wallust, fish, and friends) but only the packages. The actual configs for those live in a separate dotfiles repo, not in this flake:
+
+**https://github.com/Mooshieblob1/dotfiles**
+
+They are managed with GNU stow (`stow` ships in `environment.systemPackages`). home-manager here is a minimal scaffold; migrating the rice into it is a work in progress. If you only want the system side, you can ignore the dotfiles; if you want the desktop to look like the setup these packages imply, that repo is where the theming lives.
 
 For deeper operational detail and conventions, see [AGENTS.md](AGENTS.md).
